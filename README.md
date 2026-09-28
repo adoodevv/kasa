@@ -1,86 +1,91 @@
 # Kasa
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Stationary 5-DOF desk companion. Twi: *to speak*.
 
-Mikrobot Physical AI Lab. Not a walker, not a lamp-pet, not a MicroDuck clone. The SO-101 arm is parked in a separate repo until this neck is boring and reliable.
+A weighted base, a short neck, a camera in the head, two ears. It looks, tilts, startles, and sleeps. Print it, plug the bus, write a pose.
 
-Repo lives on a personal account for now. It will move to an organization later.
+## Quick look
 
-## v0 body (frozen)
+```python
+from kasa import Kasa
 
-- Weighted base, short neck, camera in the head, two ears/antennas.
-- No legs, wheels, or arm on v0.
-- Joints:
-  - `base_yaw` ±90° — STS3215
-  - `neck_pitch` −20° to +45° — STS3215
-  - `head_pitch` −25° to +25° — STS3215
-  - `ear_l` / `ear_r` 0–60° — metal 9g or STS3032
-- Brain later: Raspberry Pi 5 + wide USB camera + mic/speaker.
-- Motion work starts from a laptop + Feetech bus linker.
-- Print PETG at Mind2Matter. Target under ~1.2 kg. Kit cost target later ~$180–250 parts.
+with Kasa() as bot:
+    bot.look_at_face()
+    bot.goto("curious", t=0.4)
+    bot.sleep()
+```
 
-Full write-up: [`docs/v0_spec.md`](docs/v0_spec.md). Parts: [`docs/bom.md`](docs/bom.md).
+Face error from the camera drives the neck. Poses drive roll and ears.
 
-## 14-day definition of done
+- `ex` moves `base_yaw` (look around the desk)
+- `ey` moves `neck_pitch` (nod, startle, sleep)
+- roll moves `head_roll` (tilt, curiosity)
+- ears move `ear_l` and `ear_r` (expression)
 
-Printed grey neck that:
+## Hardware overview
 
-1. looks at a face
-2. startles on camera motion
-3. sleeps on a keypress
-4. does not jitter
+Five joints. One motor SKU. One bus.
 
-Out of scope for that window: LLM, LeRobot, ROS 2, X announcement, mini-arm.
+| Joint | Range | Servo | Role |
+| --- | --- | --- | --- |
+| `base_yaw` | ±90° | STS3215 7.4 V | Look around. Face `ex`. |
+| `neck_pitch` | −20° to +45° | STS3215 7.4 V | Nod, startle up, chin-down sleep. Face `ey`. |
+| `head_roll` | ±25° | STS3215 7.4 V | Tilt. Animation, not tracking. |
+| `ear_l` | 0–60° | STS3215 7.4 V | Expression. Current-limited in firmware. |
+| `ear_r` | 0–60° | STS3215 7.4 V | Expression. Current-limited in firmware. |
 
-## Near-term sequence
+Camera in the head: Innomaker U20CAM-1080P, UVC, 32×32 mm, M12, ~103° H / 130° D. Open it as MJPEG.
 
-1. Cardboard mock + photos
-2. Onshape: base / yaw horn / neck link / head shell / camera clamp
-3. `firmware/wiggle.py` — torque on, ±30° yaw sweep
-4. Face track with P-only + deadband
-5. Sleep + startle
-6. 1 hour unattended
-7. 20s silent film
+Print PETG. Target under ~1.2 kg with base ballast.
 
-## Status (2026-09-28)
+## Power
 
-- Spec frozen. This repo created.
-- Camera on the bench: **Innomaker U20CAM-1080P** (pack of 2). UVC, 32×32 mm, M12, ~103° H / 130° D, MJPEG 1080p30.
-- Laptop vision loop exists as `vision/see.py` (Haar face + motion energy + sleep key). No servos wired yet.
-- No cardboard photos yet. No Onshape yet. No Feetech script yet.
-- SO-101 stays in https://github.com/adoodevv/so101_ros2 — do not work that repo from here.
+5 V wall adapter into a Waveshare bus servo adapter, then five STS3215 7.4 V on one TTL daisy-chain.
 
-## Setup
+Do not power the bus from the host USB port alone. Use the adapter's DC input. Share ground with the host. Ear IDs run a low max-torque / max-current cap so a 19 kg.cm motor does not rip a printed ear.
+
+Laptop: camera on USB, adapter on USB for data, 5 V wall on the adapter barrel. A later Pi 5 can sit on 5 V as well; motor current stays on the adapter.
+
+## Build and start your own robot
+
+1. Cardboard the base, yaw horn, neck, head, and camera clamp. Measure the U20CAM hole pitch.
+2. Print PETG. Leave the M12 barrel free to focus. Strain-relieve the USB pigtail in the head shell.
+3. Set servo IDs 1-5: `base_yaw`, `neck_pitch`, `head_roll`, `ear_l`, `ear_r`.
+4. Plug the Waveshare adapter and the 5 V wall. Sweep yaw ±30° before closing any loop.
+5. Face track: `ex` on yaw, `ey` on pitch, 40 px deadband.
+6. Poses: `sleep`, `startle`, `curious`, `listen`.
+7. One hour unattended.
+
+Done when the printed neck looks at a face, startles on motion, sleeps on a key, and does not jitter.
+
+## Getting started with the Kasa SDK
 
 ```bash
-git clone https://github.com/adoodevv/kasa.git
-cd kasa
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+source .venv/bin/activate
+pip install -e .
 ```
 
-Plug the U20CAM into USB. Confirm it enumerates:
+```python
+from kasa import Kasa
 
-```bash
-v4l2-ctl --list-devices
-v4l2-ctl -d /dev/video0 --list-formats-ext
+with Kasa() as bot:
+    bot.look_at_face()
+    bot.goto("curious", t=0.4)
+    bot.ears.alert()
+    bot.sleep()
 ```
 
-Run the camera bench (MJPEG, 1280×720):
+Apps and examples are Python. The bus is Feetech TTL on the Waveshare adapter.
 
-```bash
-python vision/see.py
-```
+## Community and contributing
 
-Keys: `q` quit, `s` sleep, `w` wake. Tune `MOTION_THRESH` in the file to your room.
+Fork it. Change a pose. Change an ear mesh. Send a patch.
 
-Always open this module as MJPEG. YUY2 at 1080p is ~5 fps.
+Issues and pull requests on this repo. Pose files and printed parts are the customization surface.
 
-## Layout
+## License
 
-```
-docs/           frozen spec + BOM
-vision/         laptop camera bench (no ROS)
-firmware/       Feetech wiggle / track (empty until a bus linker is on the desk)
-```
+Apache License 2.0. See [LICENSE](LICENSE).
