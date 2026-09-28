@@ -9,12 +9,25 @@ Startle = motion energy above threshold while awake.
 from __future__ import annotations
 
 import argparse
+import sys
 
 import cv2
 import numpy as np
 
 DEADBAND_PX = 40
 MOTION_THRESH = 2.2e6
+
+
+def require_haar() -> None:
+    if not hasattr(cv2, "CascadeClassifier"):
+        ver = getattr(cv2, "__version__", "unknown")
+        loc = getattr(cv2, "__file__", "unknown")
+        raise SystemExit(
+            f"this cv2 ({ver} at {loc}) has no CascadeClassifier.\n"
+            "OpenCV 5 dropped Haar from core. Pin 4.x:\n"
+            "  pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python cv2\n"
+            "  pip install 'opencv-python>=4.8,<5'\n"
+        )
 
 
 def open_cam(index: int, width: int, height: int) -> cv2.VideoCapture:
@@ -29,6 +42,7 @@ def open_cam(index: int, width: int, height: int) -> cv2.VideoCapture:
 
 
 def main() -> None:
+    require_haar()
     parser = argparse.ArgumentParser(description="Kasa laptop camera bench")
     parser.add_argument("--cam", type=int, default=0)
     parser.add_argument("--width", type=int, default=1280)
@@ -48,7 +62,7 @@ def main() -> None:
     height, width = prev.shape[:2]
     prev_gray = cv2.GaussianBlur(cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY), (21, 21), 0)
     awake = True
-    print(f"awake on {width}x{height}. s=sleep  w=wake  q=quit")
+    print(f"cv2 {cv2.__version__}  {width}x{height}  s=sleep  w=wake  q=quit", file=sys.stderr)
 
     while True:
         ok, frame = cap.read()
