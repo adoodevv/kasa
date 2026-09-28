@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+*.mp4
+*.avi
+captures/
